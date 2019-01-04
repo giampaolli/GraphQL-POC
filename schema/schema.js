@@ -3,39 +3,56 @@ const axios = require('axios');
 const {
     GraphQLObjectType,
     GraphQLString,
-    GraphQLInt,
     GraphQLSchema,
     GraphQLList,
-    GraphQLNonNull
 } = graphql;
 
-const CompanyType = new GraphQLObjectType({
-    name: 'Company',
-    fields: () => ({
-        id: { type: GraphQLString },
+const PermissionType = new GraphQLObjectType({
+    name: 'Permission',
+    fields: {
         name: { type: GraphQLString },
-        description: { type: GraphQLString },
-        users: {
-            type: new GraphQLList(UserType),
-            resolve(parentValue, args) {
-                return axios.get(`http://localhost:3000/companies/${parentValue.id}/users`)
-                    .then(res => res.data)
-            }
-        }
-    })
+        path: { type: GraphQLString },
+        method: { type: GraphQLString },
+        permission: { type: GraphQLString }
+    }
 });
 
 const UserType = new GraphQLObjectType({
     name: 'User',
     fields: () => ({
+        username: { type: GraphQLString },
+        email: { type: GraphQLString },
         id: { type: GraphQLString },
-        firstName: { type: GraphQLString },
-        age: { type: GraphQLInt },
-        company: {
-            type: CompanyType,
+        profile: { type: GraphQLString },
+        permissions: {
+            type: new GraphQLList(PermissionType),
             resolve(parentValue, args) {
-                return axios.get(`http://localhost:3000/companies/${parentValue.companyId}`)
-                    .then(res => res.data);
+                const options = {
+                    method: 'GET',
+                    headers: { 'content-type': 'application/json', 'Authorization': `Bearer ${parentValue.jwt}` },
+                    url: `http://localhost:8000/auth/pap/group/${parentValue.profile}/permissions`,
+                };
+                return axios(options).then(res => {
+                    return res.data.permissions
+                })
+            }
+        }
+    })
+});
+
+const LoginType = new GraphQLObjectType({
+    name: 'Login',
+    fields: () => ({
+        jwt: { type: GraphQLString },
+        user: {
+            type: UserType,
+            resolve(parentValue, args) {
+                const options = {
+                    method: 'GET',
+                    headers: { 'content-type': 'application/json', 'Authorization': `Bearer ${parentValue.jwt}` },
+                    url: `http://localhost:8000/auth/user/${parentValue.username}`,
+                };
+                return axios(options).then(res =>  res.data.user)
             }
         }
     })
@@ -45,19 +62,10 @@ const RootQuery = new GraphQLObjectType({
     name: 'RootQueryType',
     fields: {
         user: {
-            type: UserType,
+            type: LoginType,
             args: { id: { type: GraphQLString } },
             resolve(parentValue, args) {
-                return axios.get(`http://localhost:3000/users/${args.id}`)
-                    .then(resp => resp.data);
-            }
-        },
-        company: {
-            type: CompanyType,
-            args: { id: { type: GraphQLString } },
-            resolve(parentValue, args) {
-                return axios.get(`http://localhost:3000/companies/${args.id}`)
-                    .then(resp => resp.data);
+
             }
         }
     }
@@ -66,39 +74,12 @@ const RootQuery = new GraphQLObjectType({
 const mutation = new GraphQLObjectType({
     name: 'Mutation',
     fields: {
-        addUser: {
-            type: UserType,
-            args: {
-                firstName: { type: new GraphQLNonNull(GraphQLString) },
-                age: { type: GraphQLInt },
-                companyId: { type: GraphQLString }
-            },
-            resolve(parentValue, { firstName, age, companyId }) {
-                return axios.post('http://localhost:3000/users', { firstName, age, companyId })
-                    .then(res => res.data);
-            }
-        },
-        deleteUser: {
-            type: UserType,
-            args: {
-                id: { type: new GraphQLNonNull(GraphQLString) }
-            },
-            resolve(parentValue, { id }) {
-                return axios.delete(`http://localhost:3000/users/${id}`)
-                    .then(res => res.data);
-            }
-        },
-        editUser: {
-            type: UserType,
-            args: {
-                id: { type: new GraphQLNonNull(GraphQLString) },
-                firstName: { type: GraphQLString },
-                age: { type: GraphQLInt },
-                companyId: { type: GraphQLString }
-            },
-            resolve(parentValue, args) {
-                return axios.patch(`http://localhost:3000/users/${args.id}`, args)
-                    .then(res => res.data);
+        login: {
+            type: LoginType,
+            args: { username: { type: GraphQLString }, passwd: { type: GraphQLString } },
+            resolve(parentValue, { username, passwd }) {
+                return axios.post(`http://localhost:8000/auth`, { username, passwd })
+                    .then(resp => ({...resp.data, username}));
             }
         }
     }

@@ -7,18 +7,6 @@
       "companyId": "1"
     },
     {
-      "id": "47",
-      "firstName": "Davi",
-      "age": 1,
-      "companyId": "2"
-    },
-    {
-      "id": "13",
-      "firstName": "Thaís",
-      "age": 1,
-      "companyId": "2"
-    },
-    {
       "firstName": "teste",
       "age": 5,
       "companyId": "1",
@@ -27,7 +15,7 @@
     {
       "firstName": "teste 2",
       "age": 10,
-      "companyId": "1",
+      "companyId": "2",
       "id": "bqZ92d7"
     }
   ],
